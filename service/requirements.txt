@@ -1,0 +1,4 @@
+boto3
+requests
+opensearch-py==1
+opensearch-dsl==1

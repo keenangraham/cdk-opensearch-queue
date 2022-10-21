@@ -1,6 +1,7 @@
 from aws_cdk import App
 from aws_cdk import Stack
 from aws_cdk import RemovalPolicy
+from aws_cdk import CfnOutput
 
 from constructs import Construct
 
@@ -13,8 +14,13 @@ from aws_cdk.aws_opensearchservice import CapacityConfig
 from aws_cdk.aws_opensearchservice import EbsOptions
 from aws_cdk.aws_opensearchservice import LoggingOptions
 
+from aws_cdk.aws_ec2 import Port
 from aws_cdk.aws_ec2 import SubnetSelection
 from aws_cdk.aws_ec2 import SubnetType
+
+from aws_cdk.aws_ecs import ContainerImage
+
+from aws_cdk.aws_ecs_patterns import QueueProcessingFargateService
 
 
 class Opensearch(Stack):
@@ -26,7 +32,7 @@ class Opensearch(Stack):
             'VPCs'
         )
 
-        domain = Domain(
+        self.domain = Domain(
             self,
             'Domain',
             version=EngineVersion.OPENSEARCH_1_2,
@@ -55,28 +61,98 @@ class Opensearch(Stack):
             }
         )
 
-        domain.app_log_group.apply_removal_policy(
+        self.domain.app_log_group.apply_removal_policy(
             RemovalPolicy.DESTROY
         )
-        domain.slow_index_log_group.apply_removal_policy(
+        self.domain.slow_index_log_group.apply_removal_policy(
             RemovalPolicy.DESTROY
         )
-        domain.slow_search_log_group.apply_removal_policy(
+        self.domain.slow_search_log_group.apply_removal_policy(
             RemovalPolicy.DESTROY
         )
 
+        CfnOutput(
+            self,
+            'DomainEndpoint',
+            value=self.domain.domain_endpoint,
+        )
+
+
+
+class Services(Stack):
+    def __init__(self, scope: Construct, construct_id: str, opensearch: Opensearch, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+
+        image = ContainerImage.from_asset(
+            './service'
+        )
+        
+        vpcs = VPCs(
+            self,
+            'VPCs'
+        )
+
+        service1 = QueueProcessingFargateService(
+            self,
+            'QueueProcessingFargateService1',
+            image=image,
+            assign_public_ip=True,
+            min_scaling_capacity=1,
+            max_scaling_capacity=1,
+            vpc=vpcs.default_vpc,
+            enable_execute_command=True,
+            environment={
+                'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
+            }
+        )
+
+        service2 = QueueProcessingFargateService(
+            self,
+            'QueueProcessingFargateService2',
+            cluster=service1.cluster,
+            image=image,
+            assign_public_ip=True,
+            min_scaling_capacity=1,
+            max_scaling_capacity=1,
+            enable_execute_command=True,
+            environment={
+                'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
+            }
+        )
+
+        service1.service.connections.allow_to(
+            opensearch.domain,
+            Port.tcp(443),
+            description='Allow connection to Opensearch',
+        )
+
+        service2.service.connections.allow_to(
+            opensearch.domain,
+            Port.tcp(443),
+            description='Allow connection to Opensearch',
+        )
+
+        opensearch.domain.grant_read_write(
+            service1.service.task_definition.task_role
+        )
+        opensearch.domain.grant_read_write(
+            service2.service.task_definition.task_role
+        )
 
 
 app = App()
 
-
-Opensearch(
+opensearch = Opensearch(
     app,
     'OpensearchStack',
     env=US_WEST_2,
 )
 
-
-# 'r5.xlarge'
+Services(
+    app,
+    'Services',
+    opensearch=opensearch,
+    env=US_WEST_2,
+)
 
 app.synth()
