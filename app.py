@@ -119,13 +119,21 @@ class Services(Stack):
             'QueueProcessingFargateService1',
             image=image,
             assign_public_ip=True,
-            min_scaling_capacity=1,
-            max_scaling_capacity=1,
+            min_scaling_capacity=10,
+            max_scaling_capacity=10,
             vpc=vpcs.default_vpc,
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
             }
+        )
+
+        service1.cluster.add_default_cloud_map_namespace(
+            name='services.local'
+        )
+
+        service1.service.enable_cloud_map(
+            name='service1'
         )
 
         service2 = QueueProcessingFargateService(
@@ -134,12 +142,28 @@ class Services(Stack):
             cluster=service1.cluster,
             image=image,
             assign_public_ip=True,
-            min_scaling_capacity=1,
-            max_scaling_capacity=1,
+            min_scaling_capacity=10,
+            max_scaling_capacity=10,
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
             }
+        )
+
+        service2.service.enable_cloud_map(
+            name='service2'
+        )
+
+        service1.service.connections.allow_to(
+            service2.service,
+            Port.tcp(8000),
+            description='Allow connection to service2',
+        )
+
+        service2.service.connections.allow_to(
+            service1.service,
+            Port.tcp(8000),
+            description='Allow connection to service1',
         )
 
         service1.service.connections.allow_to(

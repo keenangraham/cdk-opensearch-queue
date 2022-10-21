@@ -10,7 +10,17 @@ print(queue_name)
 
 cycle_number = 0
 
-while True:
-    print('running some cycle', cycle_number)
+
+from fastapi import FastAPI
+
+
+app = FastAPI()
+
+
+@app.get("/")
+def root():
+    print(queue_name)
+    global cycle_number
     cycle_number += 1
-    time.sleep(60)
+    print(cycle_number)
+    return {"message": "Hello World"}

@@ -4,10 +4,12 @@ ENV PYTHONDONTWRITEBYTECODE 1
 
 ENV PYTHONUNBUFFERED 1
 
-COPY command.py command.py
-
 COPY requirements.txt requirements.txt
 
 RUN pip install -r requirements.txt
 
-CMD ["python", "command.py"]
+COPY command.py command.py
+
+EXPOSE 8000
+
+CMD ["uvicorn", "command:app", "--host", "0.0.0.0", "--port", "8000"]
