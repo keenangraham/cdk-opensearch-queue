@@ -22,6 +22,10 @@ from aws_cdk.aws_ecs import ContainerImage
 
 from aws_cdk.aws_ecs_patterns import QueueProcessingFargateService
 
+from aws_cdk.aws_iam import PolicyStatement
+from aws_cdk.aws_iam import Effect
+from aws_cdk.aws_iam import AnyPrincipal
+
 
 class Opensearch(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -69,6 +73,24 @@ class Opensearch(Stack):
         )
         self.domain.slow_search_log_group.apply_removal_policy(
             RemovalPolicy.DESTROY
+        )
+
+        # Access controlled by VPC security groups.
+        unsigned_access_policy = PolicyStatement(
+            effect=Effect.ALLOW,
+            actions=[
+                'es:ESHttp*',
+            ],
+            principals=[
+                AnyPrincipal()
+            ],
+            resources=[
+                f'{self.domain.domain_arn}/*'
+            ]
+        )
+
+        self.domain.add_access_policies(
+            unsigned_access_policy
         )
 
         CfnOutput(
@@ -130,13 +152,6 @@ class Services(Stack):
             opensearch.domain,
             Port.tcp(443),
             description='Allow connection to Opensearch',
-        )
-
-        opensearch.domain.grant_read_write(
-            service1.service.task_definition.task_role
-        )
-        opensearch.domain.grant_read_write(
-            service2.service.task_definition.task_role
         )
 
 
