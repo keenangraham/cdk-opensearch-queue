@@ -119,8 +119,8 @@ class Services(Stack):
             'QueueProcessingFargateService1',
             image=image,
             assign_public_ip=True,
-            min_scaling_capacity=10,
-            max_scaling_capacity=10,
+            min_scaling_capacity=2,
+            max_scaling_capacity=2,
             vpc=vpcs.default_vpc,
             enable_execute_command=True,
             environment={
@@ -142,8 +142,8 @@ class Services(Stack):
             cluster=service1.cluster,
             image=image,
             assign_public_ip=True,
-            min_scaling_capacity=10,
-            max_scaling_capacity=10,
+            min_scaling_capacity=3,
+            max_scaling_capacity=3,
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
