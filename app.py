@@ -14,12 +14,17 @@ from aws_cdk.aws_opensearchservice import CapacityConfig
 from aws_cdk.aws_opensearchservice import EbsOptions
 from aws_cdk.aws_opensearchservice import LoggingOptions
 
+from aws_cdk.aws_servicediscovery import PrivateDnsNamespace
+
 from aws_cdk.aws_ec2 import Port
 from aws_cdk.aws_ec2 import SubnetSelection
 from aws_cdk.aws_ec2 import SubnetType
 
 from aws_cdk.aws_ecs import ContainerImage
+from aws_cdk.aws_ecs import CloudMapOptions
 
+from aws_cdk.aws_ecs_patterns import ApplicationLoadBalancedFargateService
+from aws_cdk.aws_ecs_patterns import ApplicationLoadBalancedTaskImageOptions
 from aws_cdk.aws_ecs_patterns import QueueProcessingFargateService
 
 from aws_cdk.aws_iam import PolicyStatement
@@ -105,31 +110,58 @@ class Services(Stack):
     def __init__(self, scope: Construct, construct_id: str, opensearch: Opensearch, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        image = ContainerImage.from_asset(
-            './service'
-        )
-        
         vpcs = VPCs(
             self,
             'VPCs'
+        )
+
+        cloud_map_namespace = 'demo.branch-xyz.local'
+
+        api_image = ContainerImage.from_asset(
+            './external'
+        )
+
+        api = ApplicationLoadBalancedFargateService(
+            self,
+            'ApplicationLoadBalancedFargateService',
+            task_image_options=ApplicationLoadBalancedTaskImageOptions(
+                container_name='api',
+                image=api_image,
+                environment={
+                    'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
+                    'cloud_map_namespace':  cloud_map_namespace
+                }
+            ),
+            vpc=vpcs.default_vpc,
+            enable_execute_command=True,
+            assign_public_ip=True,
+        )
+
+        api.cluster.add_default_cloud_map_namespace(
+            name=cloud_map_namespace
+        )
+
+        api.service.enable_cloud_map(
+            name='api'
+        )
+
+        image = ContainerImage.from_asset(
+            './service'
         )
 
         service1 = QueueProcessingFargateService(
             self,
             'QueueProcessingFargateService1',
             image=image,
+            cluster=api.cluster,
             assign_public_ip=True,
             min_scaling_capacity=2,
             max_scaling_capacity=2,
-            vpc=vpcs.default_vpc,
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
+                'cloud_map_namespace':  cloud_map_namespace
             }
-        )
-
-        service1.cluster.add_default_cloud_map_namespace(
-            name='services.local'
         )
 
         service1.service.enable_cloud_map(
@@ -139,7 +171,7 @@ class Services(Stack):
         service2 = QueueProcessingFargateService(
             self,
             'QueueProcessingFargateService2',
-            cluster=service1.cluster,
+            cluster=api.cluster,
             image=image,
             assign_public_ip=True,
             min_scaling_capacity=3,
@@ -147,11 +179,24 @@ class Services(Stack):
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
+                'cloud_map_namespace':  cloud_map_namespace,
             }
         )
 
         service2.service.enable_cloud_map(
             name='service2'
+        )
+
+        api.service.connections.allow_to(
+            service2.service,
+            Port.tcp(8000),
+            description='Allow connection to service2',
+        )
+
+        api.service.connections.allow_to(
+            service1.service,
+            Port.tcp(8000),
+            description='Allow connection to service1',
         )
 
         service1.service.connections.allow_to(
@@ -160,10 +205,28 @@ class Services(Stack):
             description='Allow connection to service2',
         )
 
+        service1.service.connections.allow_to(
+            api.service,
+            Port.tcp(80),
+            description='Allow connection to api',
+        )
+
         service2.service.connections.allow_to(
             service1.service,
             Port.tcp(8000),
             description='Allow connection to service1',
+        )
+
+        service2.service.connections.allow_to(
+            api.service,
+            Port.tcp(80),
+            description='Allow connection to api',
+        )
+
+        api.service.connections.allow_to(
+            opensearch.domain,
+            Port.tcp(443),
+            description='Allow connection to Opensearch',
         )
 
         service1.service.connections.allow_to(
