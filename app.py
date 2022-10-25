@@ -129,7 +129,7 @@ class Services(Stack):
                 image=api_image,
                 environment={
                     'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
-                    'CLOUD_MAP_NAMESPACE':  CLOUD_MAP_NAMESPACE
+                    'CLOUD_MAP_NAMESPACE': CLOUD_MAP_NAMESPACE,
                 }
             ),
             vpc=vpcs.default_vpc,
@@ -160,7 +160,7 @@ class Services(Stack):
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
-                'CLOUD_MAP_NAMESPACE':  CLOUD_MAP_NAMESPACE
+                'CLOUD_MAP_NAMESPACE': CLOUD_MAP_NAMESPACE,
             }
         )
 
@@ -179,7 +179,7 @@ class Services(Stack):
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
-                'CLOUD_MAP_NAMESPACE':  CLOUD_MAP_NAMESPACE,
+                'CLOUD_MAP_NAMESPACE': CLOUD_MAP_NAMESPACE,
             }
         )
 
