@@ -115,7 +115,7 @@ class Services(Stack):
             'VPCs'
         )
 
-        cloud_map_namespace = 'demo.branch-xyz.local'
+        CLOUD_MAP_NAMESPACE = 'demo.branch-xyz.local'
 
         api_image = ContainerImage.from_asset(
             './external'
@@ -129,7 +129,7 @@ class Services(Stack):
                 image=api_image,
                 environment={
                     'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
-                    'cloud_map_namespace':  cloud_map_namespace
+                    'CLOUD_MAP_NAMESPACE':  CLOUD_MAP_NAMESPACE
                 }
             ),
             vpc=vpcs.default_vpc,
@@ -138,7 +138,7 @@ class Services(Stack):
         )
 
         api.cluster.add_default_cloud_map_namespace(
-            name=cloud_map_namespace
+            name=CLOUD_MAP_NAMESPACE
         )
 
         api.service.enable_cloud_map(
@@ -160,7 +160,7 @@ class Services(Stack):
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
-                'cloud_map_namespace':  cloud_map_namespace
+                'CLOUD_MAP_NAMESPACE':  CLOUD_MAP_NAMESPACE
             }
         )
 
@@ -179,7 +179,7 @@ class Services(Stack):
             enable_execute_command=True,
             environment={
                 'OPENSEARCH_URL': opensearch.domain.domain_endpoint,
-                'cloud_map_namespace':  cloud_map_namespace,
+                'CLOUD_MAP_NAMESPACE':  CLOUD_MAP_NAMESPACE,
             }
         )
 
