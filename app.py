@@ -211,6 +211,10 @@ class Services(Stack):
             description='Allow connection to api',
         )
 
+        service1.sqs_queue.grant_send_messages(
+            api.task_definition.task_role
+        )
+
         service2.service.connections.allow_to(
             service1.service,
             Port.tcp(8000),
@@ -221,6 +225,10 @@ class Services(Stack):
             api.service,
             Port.tcp(80),
             description='Allow connection to api',
+        )
+
+        service2.sqs_queue.grant_send_messages(
+            api.task_definition.task_role
         )
 
         api.service.connections.allow_to(
